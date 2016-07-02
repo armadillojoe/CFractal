@@ -1,4 +1,4 @@
-/*Copyright Joseph Jimenez 2016
+/*Copyright 2016 Joseph Jimenez
  *This is the implementaion file for palette.h
  */
 

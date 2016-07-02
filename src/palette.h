@@ -1,4 +1,4 @@
-/*Copyright Joseph Jimenez 2016
+/*Copyright 2016 Joseph Jimenez
  *This defines functions and structs for a Palette,
  *which creates a gradient of colors to be used
  *on pixels

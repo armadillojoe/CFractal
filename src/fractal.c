@@ -1,4 +1,4 @@
-/*Copyright Joseph Jimenez 2016
+/*Copyright 2016 Joseph Jimenez
  *This program renders a simple fractal
  */
 
@@ -13,7 +13,7 @@
 #include "palette.h"
 
 // Parallelism
-#define NUM_THREADS 4
+#define NUM_THREADS 64
 
 // Max iterations per pixel
 #define MAX_ITS 100
@@ -29,6 +29,11 @@
 
 // Drawing lock to avoid race conditions
 static pthread_mutex_t drawLock;
+static guint drawid;
+
+// Stores all calculated color indexes for the pixels
+static int colorIndexes[HEIGHT * WIDTH];
+static gboolean uncolored = TRUE;
 
 // Simple Point struct where x and y represent pixels
 typedef struct point {
@@ -41,8 +46,6 @@ typedef struct parameters {
   int lo;
   int hi;
   Point *points;
-  Palette *p;
-  cairo_t *cr;
 } Parameter;
 
 // Worker function for threads
@@ -55,7 +58,7 @@ void DrawPoint(cairo_t *cr, guint x, guint y, const gchar *col);
 gboolean DrawCallback(GtkWidget *widget, cairo_t *cr, gpointer data);
 
 // Iterate to determine pixel color
-void iterate(uint16_t x, uint16_t y, Palette *p, cairo_t *cr);
+void iterate(uint16_t x, uint16_t y, int index);
 
 int main(int argc, char **argv) {
   GtkWidget *window;
@@ -68,9 +71,10 @@ int main(int argc, char **argv) {
 
   dArea = gtk_drawing_area_new();
   gtk_widget_set_size_request(dArea, WIDTH, HEIGHT);
-  g_signal_connect(G_OBJECT(dArea), "draw", G_CALLBACK(DrawCallback), NULL);
   gtk_container_add(GTK_CONTAINER(window), dArea);
-
+  drawid = g_signal_connect(G_OBJECT(dArea),
+			       "draw", G_CALLBACK(DrawCallback), NULL);
+  
   g_signal_connect(window, "destroy", G_CALLBACK(gtk_main_quit), NULL);
 
   gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
@@ -84,8 +88,8 @@ int main(int argc, char **argv) {
 }
 
 void DrawPoint(cairo_t *cr, guint x, guint y, const gchar *col) {
-  cairo_move_to(cr, x - 1, y - 1);
-  cairo_line_to(cr, x, y);
+  cairo_move_to(cr, x, y);
+  cairo_line_to(cr, x + 1, y + 1);
   GdkRGBA color;
   
   gdk_rgba_parse(&color, col);
@@ -113,32 +117,47 @@ gboolean DrawCallback(GtkWidget *widget, cairo_t *cr, gpointer data) {
   Point points[WIDTH * HEIGHT];
 
   int index = 0;
+  if (uncolored) {
+    printf("Drawing\n");
+    for (uint16_t y = 0; y < HEIGHT; y++) {
+      for (uint16_t x = 0; x < WIDTH; x++) {
+	points[index] = (Point){x, y};
+	index++;
+      }
+    }
+
+    for (int i = 0; i < NUM_THREADS; i++) {
+      int scaleFactor = WIDTH * HEIGHT / NUM_THREADS;
+      params[i].lo = i * scaleFactor;
+      params[i].hi = (i + 1) * scaleFactor;
+      params[i].points = points;
+    }
+
+    pthread_t threads[NUM_THREADS];
+    for (int i = 0; i < NUM_THREADS; i++) {
+      if (pthread_create(&threads[i], NULL, &DrawPixels, &params[i]) != 0) {
+	exit(EXIT_FAILURE);
+      }
+    }
+  
+    for (int i = 0; i < NUM_THREADS; i++) {
+      if (pthread_join(threads[i], NULL) != 0) {
+	exit(EXIT_FAILURE);
+      }
+    }
+    uncolored = FALSE;
+  }
+  index = 0;
   for (uint16_t y = 0; y < HEIGHT; y++) {
     for (uint16_t x = 0; x < WIDTH; x++) {
-      points[index] = (Point){x, y};
+      char color[20];
+      if (colorIndexes[index] == -1) {
+	snprintf(color, sizeof(char) * 20, "rgb(0,0,0)");
+      } else {
+	GetColorAtIndex(palette, colorIndexes[index], color);
+      }
+      DrawPoint(cr, x, y, (gchar *)color);
       index++;
-    }
-  }
-  
-  for (int i = 0; i < NUM_THREADS; i++) {
-    int scaleFactor = WIDTH * HEIGHT / NUM_THREADS;
-    params[i].lo = i * scaleFactor;
-    params[i].hi = (i + 1) * scaleFactor;
-    params[i].p = palette;
-    params[i].cr = cr;
-    params[i].points = points;
-  }
-
-  pthread_t threads[NUM_THREADS];
-  for (int i = 0; i < NUM_THREADS; i++) {
-    if (pthread_create(&threads[i], NULL, &DrawPixels, &params[i]) != 0) {
-      exit(EXIT_FAILURE);
-    }
-  }
-  
-  for (int i = 0; i < NUM_THREADS; i++) {
-    if (pthread_join(threads[i], NULL) != 0) {
-      exit(EXIT_FAILURE);
     }
   }
 
@@ -149,21 +168,19 @@ gboolean DrawCallback(GtkWidget *widget, cairo_t *cr, gpointer data) {
   double seconds = difftime(finish, start);
 
   printf("Rendered in about %f seconds.\n", seconds);
-  
+
   return TRUE;
 }
 
 void *DrawPixels(void *params) {
-  printf("Entered Thread\n");
   Parameter *p = (Parameter *)params;
   for (int i = p->lo; i < p->hi; i++) {
-    iterate(p->points[i].x, p->points[i].y, p->p, p->cr);
+    iterate(p->points[i].x, p->points[i].y, i);
   }
-  printf("Done with Thread\n");
   return NULL;
 }
 
-void iterate(uint16_t x, uint16_t y, Palette *p, cairo_t *cr) {
+void iterate(uint16_t x, uint16_t y, int index) {
   float x0 = (float)(x - (WIDTH / 2) - X_PAN) / ZOOM;
   float y0 = (float)(y - (HEIGHT / 2) - Y_PAN) / ZOOM;
 
@@ -182,15 +199,11 @@ void iterate(uint16_t x, uint16_t y, Palette *p, cairo_t *cr) {
     iterations++;
   }
 
-  char color[20];
   if (iterations == MAX_ITS) {
-    snprintf(color, sizeof(char) * 20, "rgb(0,0,0)");
+    colorIndexes[index] = -1;
   } else {
-    uint16_t index = (uint16_t)floor(((float)iterations /
+    uint16_t ind = (uint16_t)floor(((float)iterations /
 				      (float)(MAX_ITS - 1)) * 255);
-    GetColorAtIndex(p, index, color);
+    colorIndexes[index] = ind;
   }
-  pthread_mutex_lock(&drawLock);
-  DrawPoint(cr, x, y, (gchar *)color);
-  pthread_mutex_unlock(&drawLock);
 }
