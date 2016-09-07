@@ -8,12 +8,9 @@
 
 #include "palette.h"
 
-void GetColorAtIndex(Palette *pal, int index, char *ret) {
+void GetColorAtIndex(Palette *pal, int index, JColor *ret) {
   JColor col = pal->pal[index];
-
-  snprintf(ret, sizeof(char) * 20,
-	   "rgb(%"PRIu8",%"PRIu8",%"PRIu8")",
-	   col.r, col.g, col.b);
+  *ret = col;
 }
 
 Palette *AllocatePalette(uint8_t r, uint8_t g, uint8_t b) {

@@ -1,7 +1,8 @@
-/*Copyright 2016 Joseph Jimenez
- *This defines functions and structs for a Palette,
- *which creates a gradient of colors to be used
- *on pixels
+/*
+ * Copyright 2016 Joseph Jimenez
+ * This defines functions and structs for a Palette,
+ * which creates a gradient of colors to be used
+ * on pixels
  */
 
 #ifndef _PALETTE_H_
@@ -9,14 +10,9 @@
 
 #include <inttypes.h>
 
-#define NUM_COLORS 256
+#include "jColor.h"
 
-// A RGB color struct
-typedef struct jcolor {
-  uint8_t r;
-  uint8_t g;
-  uint8_t b;
-} JColor;
+#define NUM_COLORS 256
 
 // A struct to represent a Palette, keeps track of all the colors
 // and a current color
@@ -30,7 +26,7 @@ typedef struct palette {
 // Takes a Palette pointer, an index, and a 20 byte char array, and
 // returns a string representation through char *ret of the color
 // of the Palette at the index. By default index is 0-255
-void GetColorAtIndex(Palette *pal, int index, char *ret);
+void GetColorAtIndex(Palette *pal, int index, JColor *ret);
 
 // Creates a new Palette with initial r, g, b values. Caller responsible
 // for freeing it with DeletePalette
