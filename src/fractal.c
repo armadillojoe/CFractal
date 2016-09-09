@@ -20,8 +20,8 @@
 #define MAX_ITS 100
 
 // Height and width contants
-#define HEIGHT 1400
-#define WIDTH 1400
+#define HEIGHT 1600
+#define WIDTH 1600
    
 // Position constants
 #define X_PAN 0
@@ -68,7 +68,10 @@ void Render(void) {
   Palette *palette = AllocatePalette(8, 24, 8);
 
   Parameter params[NUM_THREADS];
-  Point points[WIDTH * HEIGHT];
+  Point *points = (Point *)malloc(sizeof(Point) * WIDTH * HEIGHT);
+  if (points == NULL) {
+    exit(EXIT_FAILURE);
+  }
 
   int index = 0;
   printf("Drawing\n");
@@ -118,6 +121,8 @@ void Render(void) {
   DeleteJBitMap(bmp);
 
   DeletePalette(palette);
+
+  free(points);
 
   time(&finish);
   
