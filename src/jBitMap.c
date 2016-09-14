@@ -35,23 +35,19 @@ void SetPixel(JBitMap *bmp, uint16_t x, uint16_t y, JColor col) {
   bmp->pixels[index] = col;
 }
 
+void FillRect(JBitMap *bmp, uint16_t x0, uint16_t x1,
+	      uint16_t y0, uint16_t y1, JColor col) {
+  for (int i = x0; i < x1; i++) {
+    for (int j = y0; j < y1; j++) {
+      SetPixel(bmp, i, j, col);
+    }
+  }
+}
+
 void CreateFile(JBitMap *bmp, char *filename) {
   FILE *fp = fopen(filename, "wb+");
-  char buf[18];
-  buf[0] = 0x42;
-  buf[1] = 0x4D;
-  buf[2] = 0x4C;
-  for (int i = 3; i < 10; i++) {
-    buf[i] = 0x00;
-  }
-  buf[10] = 0x1A;
-  for (int i = 11; i < 14; i++) {
-    buf[i] = 0x00;
-  }
-  buf[14] = 0x0C;
-  for (int i = 15; i < 18; i++) {
-    buf[i] = 0x00;
-  }
+  char buf[18] = {0x42, 0x4D, 0x4C, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		  0x00, 0x1A, 0x00, 0x00, 0x00, 0x0C, 0x00, 0x00, 0x00};
   if (fp == NULL) {
     exit(EXIT_FAILURE);
   }
@@ -67,11 +63,7 @@ void CreateFile(JBitMap *bmp, char *filename) {
   if (ret != 1) {
     exit(EXIT_FAILURE);
   }
-  char buf2[4];
-  buf2[0] = 0x01;
-  buf2[1] = 0x00;
-  buf2[2] = 0x18;
-  buf2[3] = 0x00;
+  char buf2[4] = {0x01, 0x00, 0x18, 0x00};
   ret = fwrite(buf2, 1, 4, fp);
   if (ret != 4) {
     exit(EXIT_FAILURE);

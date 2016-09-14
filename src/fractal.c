@@ -20,13 +20,13 @@
 #define MAX_ITS 100
 
 // Height and width contants
-#define HEIGHT 1600
-#define WIDTH 1600
+#define HEIGHT 3000
+#define WIDTH 3000
    
 // Position constants
 #define X_PAN 0
 #define Y_PAN 210
-#define ZOOM 600
+#define ZOOM 1000
 
 // Stores all calculated color indexes for the pixels
 static int colorIndexes[HEIGHT * WIDTH];
@@ -60,12 +60,11 @@ int main(int argc, char **argv) {
 }
 
 void Render(void) {
+  clock_t begin = clock();
   JBitMap *bmp = AllocateJBitMap(WIDTH, HEIGHT);
-  time_t start, finish;
 
-  time(&start);
-
-  Palette *palette = AllocatePalette(8, 24, 8);
+  Palette *palette = AllocatePalette(0, 48, 0);
+  CreatePaletteImage(palette, "pal.bmp");
 
   Parameter params[NUM_THREADS];
   Point *points = (Point *)malloc(sizeof(Point) * WIDTH * HEIGHT);
@@ -124,9 +123,9 @@ void Render(void) {
 
   free(points);
 
-  time(&finish);
+  clock_t end = clock();
   
-  double seconds = difftime(finish, start);
+  double seconds = (double)(end - begin) / CLOCKS_PER_SEC;
 
   printf("Rendered in about %f seconds.\n", seconds);
 }

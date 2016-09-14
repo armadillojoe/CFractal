@@ -35,4 +35,7 @@ Palette *AllocatePalette(uint8_t r, uint8_t g, uint8_t b);
 // Free memory used by the Palette
 void DeletePalette(Palette *pal);
 
+// Makes an image of the palette
+void CreatePaletteImage(Palette *pal, char *name);
+
 #endif  // _PALETTE_H_
